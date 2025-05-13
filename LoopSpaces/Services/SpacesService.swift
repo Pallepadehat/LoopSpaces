@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import AppKit
 
 /// Service to interact with macOS Spaces functionality
 class SpacesService: ObservableObject {
@@ -7,11 +8,13 @@ class SpacesService: ObservableObject {
     @Published var activeSpaceId: Int = 1
     
     init() {
+        print("SpacesService initializing...")
         refreshSpaces()
     }
     
     /// Refreshes the list of spaces and their active state
     func refreshSpaces() {
+        print("Refreshing spaces...")
         // In a real implementation, we would use private APIs to get actual spaces
         // For now, we're creating mock data
         
@@ -20,13 +23,18 @@ class SpacesService: ObservableObject {
         
         // Get all spaces (would use private API)
         spaces = (1...5).map { id in
-            Space(
+            let thumbnail = createPlaceholderThumbnail(forId: id)
+            print("Created thumbnail for Space \(id), size: \(thumbnail.size)")
+            
+            return Space(
                 id: id,
                 displayName: "Space \(id)",
-                thumbnail: createPlaceholderThumbnail(forId: id),
+                thumbnail: thumbnail,
                 isActive: id == activeSpaceId
             )
         }
+        
+        print("Created \(spaces.count) spaces, active space ID: \(activeSpaceId)")
     }
     
     /// Switch to a specific space
@@ -44,6 +52,7 @@ class SpacesService: ObservableObject {
         for i in 0..<spaces.count {
             spaces[i].isActive = spaces[i].id == activeSpaceId
         }
+        print("Updated active space to \(activeSpaceId)")
     }
     
     /// Create a placeholder thumbnail for preview/demo purposes
@@ -78,6 +87,9 @@ class SpacesService: ObservableObject {
         text.draw(in: rect, withAttributes: attributes)
         
         image.unlockFocus()
-        return image
+        
+        // Force a redraw to ensure the image is rendered
+        let copiedImage = NSImage(data: image.tiffRepresentation!)!
+        return copiedImage
     }
 } 

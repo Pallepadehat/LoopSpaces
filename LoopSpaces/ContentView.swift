@@ -6,13 +6,20 @@
 //
 
 import SwiftUI
+import AppKit
 
 struct ContentView: View {
     @StateObject private var spacesService = SpacesService()
     @StateObject private var windowManager = WindowManager()
     @StateObject private var settingsViewModel = SettingsViewModel()
     
-    private var hotkeyManager = HotkeyManager()
+    // Don't initialize the hotkey manager directly as a property
+    // Instead, create it in onAppear and store it in a state variable
+    @State private var hotkeyManager: HotkeyManager?
+    
+    init() {
+        print("ContentView initializing...")
+    }
     
     var body: some View {
         VStack {
@@ -34,11 +41,21 @@ struct ContentView: View {
             }
             .buttonStyle(.borderedProminent)
             .padding(.top, 20)
+            
+            // Debug button
+            Button("Test Overlay") {
+                toggleSpacesSwitcher()
+            }
+            .padding(.top, 10)
         }
         .padding()
         .frame(minWidth: 400, minHeight: 300)
         .onAppear {
-            setupHotkey()
+            print("ContentView body appeared")
+            // Create the hotkey manager and set it up after the view appears
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                setupHotkey()
+            }
         }
     }
     
@@ -59,6 +76,8 @@ struct ContentView: View {
         }
         
         switch settingsViewModel.hotkeyKeyCode {
+        case 48:
+            description += "⇥"
         case 50:
             description += "`"
         default:
@@ -69,15 +88,48 @@ struct ContentView: View {
     }
     
     private func setupHotkey() {
-        hotkeyManager.registerHotkey(
+        print("Setting up hotkey: modifiers=\(settingsViewModel.hotkeyModifiers), keyCode=\(settingsViewModel.hotkeyKeyCode)")
+        
+        // Create a new hotkey manager
+        let manager = HotkeyManager()
+        
+        // Register the hotkey
+        manager.registerHotkey(
             key: settingsViewModel.hotkeyKeyCode,
             modifiers: settingsViewModel.modifierFlags
-        ) {
-            toggleSpacesSwitcher()
+        ) { [weak windowManager, weak spacesService] in
+            print("Hotkey triggered!")
+            // Use weak references to avoid retain cycles
+            guard let windowManager = windowManager, let spacesService = spacesService else {
+                print("ERROR: windowManager or spacesService was nil when hotkey was triggered")
+                return
+            }
+            
+            // Refresh spaces and show the overlay
+            spacesService.refreshSpaces()
+            
+            DispatchQueue.main.async {
+                windowManager.toggleOverlay(rootView: 
+                    SpacesSwitcherOverlay(
+                        spacesService: spacesService,
+                        onSpaceSelected: { space in
+                            spacesService.switchToSpace(space)
+                            windowManager.hideOverlay()
+                        },
+                        onDismiss: {
+                            windowManager.hideOverlay()
+                        }
+                    )
+                )
+            }
         }
+        
+        // Store the manager to keep it alive
+        self.hotkeyManager = manager
     }
     
     private func toggleSpacesSwitcher() {
+        print("Toggling spaces switcher")
         spacesService.refreshSpaces()
         
         windowManager.toggleOverlay(rootView: 
@@ -91,16 +143,12 @@ struct ContentView: View {
                     windowManager.hideOverlay()
                 }
             )
-            .environmentObject(windowManager)
         )
     }
     
     private func showSettings() {
-        // In a real app, we'd show a proper settings window here
-        // For this demo, we'll just print a message
-        print("Settings would be shown here")
+        print("Showing settings window")
         
-        // You'd typically present the settings window like this:
         let settingsWindow = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
             styleMask: [.titled, .closable, .resizable],

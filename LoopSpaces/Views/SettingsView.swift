@@ -2,8 +2,25 @@ import SwiftUI
 
 /// View model for app settings
 class SettingsViewModel: ObservableObject {
-    @AppStorage("hotkeyModifiers") var hotkeyModifiers: UInt = 256 // Default to command
-    @AppStorage("hotkeyKeyCode") var hotkeyKeyCode: Int = 50 // Default to backtick (`)
+    @Published var hotkeyModifiers: UInt {
+        didSet {
+            UserDefaults.standard.set(hotkeyModifiers, forKey: "hotkeyModifiers")
+        }
+    }
+    
+    @Published var hotkeyKeyCode: Int {
+        didSet {
+            UserDefaults.standard.set(hotkeyKeyCode, forKey: "hotkeyKeyCode")
+        }
+    }
+    
+    init() {
+        // Load from UserDefaults or use default values
+        // Default to Command (256) + Option (2048) = 2304
+        self.hotkeyModifiers = UserDefaults.standard.object(forKey: "hotkeyModifiers") as? UInt ?? 2304
+        // Default to Tab key (48)
+        self.hotkeyKeyCode = UserDefaults.standard.object(forKey: "hotkeyKeyCode") as? Int ?? 48
+    }
     
     var modifierFlags: NSEvent.ModifierFlags {
         return NSEvent.ModifierFlags(rawValue: UInt(hotkeyModifiers))

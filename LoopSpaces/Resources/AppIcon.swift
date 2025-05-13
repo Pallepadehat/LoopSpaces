@@ -65,9 +65,3 @@ struct AppIconGenerator: View {
     }
 }
 
-#Preview {
-    AppIconGenerator()
-        .previewLayout(.sizeThatFits)
-        .padding()
-        .background(Color.black)
-} 

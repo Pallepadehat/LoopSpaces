@@ -7,6 +7,13 @@ struct SpacesSwitcherOverlay: View {
     var onSpaceSelected: (Space) -> Void
     var onDismiss: () -> Void
     
+    init(spacesService: SpacesService, onSpaceSelected: @escaping (Space) -> Void, onDismiss: @escaping () -> Void) {
+        print("SpacesSwitcherOverlay initializing...")
+        self.spacesService = spacesService
+        self.onSpaceSelected = onSpaceSelected
+        self.onDismiss = onDismiss
+    }
+    
     var body: some View {
         VStack {
             // App title and logo
@@ -29,6 +36,7 @@ struct SpacesSwitcherOverlay: View {
                             space: space,
                             isSelected: selectedIndex == index,
                             onSelect: {
+                                print("Space \(space.id) selected")
                                 selectedIndex = index
                                 onSpaceSelected(space)
                             }
@@ -89,12 +97,17 @@ struct SpacesSwitcherOverlay: View {
             )
         )
         .onAppear {
+            print("SpacesSwitcherOverlay appeared, spaces count: \(spacesService.spaces.count)")
             // Find the currently active space and select it
             if let activeIndex = spacesService.spaces.firstIndex(where: { $0.isActive }) {
                 selectedIndex = activeIndex
+                print("Active space selected: \(activeIndex)")
+            } else {
+                print("No active space found")
             }
         }
         .onKeyPress { press in
+            print("Key pressed: \(press.key)")
             switch press.key {
             case .leftArrow:
                 selectPreviousSpace()
@@ -104,10 +117,12 @@ struct SpacesSwitcherOverlay: View {
                 return .handled
             case .return:
                 if let space = currentlySelectedSpace {
+                    print("Enter pressed, selecting space \(space.id)")
                     onSpaceSelected(space)
                 }
                 return .handled
             case .escape:
+                print("Escape pressed, dismissing overlay")
                 onDismiss()
                 return .handled
             default:
@@ -125,11 +140,13 @@ struct SpacesSwitcherOverlay: View {
     
     private func selectNextSpace() {
         let nextIndex = (selectedIndex + 1) % spacesService.spaces.count
+        print("Selecting next space: \(nextIndex)")
         selectedIndex = nextIndex
     }
     
     private func selectPreviousSpace() {
         let prevIndex = (selectedIndex - 1 + spacesService.spaces.count) % spacesService.spaces.count
+        print("Selecting previous space: \(prevIndex)")
         selectedIndex = prevIndex
     }
 }
