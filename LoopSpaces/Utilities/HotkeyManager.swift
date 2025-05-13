@@ -10,6 +10,9 @@ class HotkeyManager {
     private var hotKeyRef: EventHotKeyRef?
     private var action: HotkeyAction?
     
+    // Static shared instance for callback access
+    private static var shared: HotkeyManager?
+    
     deinit {
         unregisterHotkey()
     }
@@ -21,6 +24,7 @@ class HotkeyManager {
     ///   - action: The closure to execute when hotkey is pressed
     func registerHotkey(key: Int, modifiers: NSEvent.ModifierFlags, action: @escaping HotkeyAction) {
         self.action = action
+        HotkeyManager.shared = self
         
         // Convert from Cocoa modifier flags to Carbon modifier flags
         var carbonModifiers: UInt32 = 0
@@ -34,17 +38,14 @@ class HotkeyManager {
         eventType.eventClass = OSType(kEventClassKeyboard)
         eventType.eventKind = OSType(kEventHotKeyPressed)
         
-        // Install event handler
+        // Install event handler with a C callback
         InstallEventHandler(
             GetApplicationEventTarget(),
-            { (_, eventRef, _) -> OSStatus in
-                guard let strongSelf = Unmanaged<HotkeyManager>.fromOpaque(
-                    UnsafeRawPointer(bitPattern: UInt(UserData.hotkeyManagerPtr))!
-                ).takeUnretainedValue() else {
-                    return noErr
+            { (_, _, _) -> OSStatus in
+                // Access through the static shared instance
+                if let manager = HotkeyManager.shared {
+                    manager.hotkeyPressed()
                 }
-                
-                strongSelf.hotkeyPressed()
                 return noErr
             },
             1,
@@ -77,6 +78,10 @@ class HotkeyManager {
             UnregisterEventHotKey(hotKeyRef)
             self.hotKeyRef = nil
         }
+        
+        if HotkeyManager.shared === self {
+            HotkeyManager.shared = nil
+        }
     }
     
     private func hotkeyPressed() {
@@ -85,7 +90,6 @@ class HotkeyManager {
     
     /// Namespace for static values
     private enum UserData {
-        static let hotkeyManagerPtr: Int = 1000
         static let hotkeySignature: Int = 1234
     }
 } 
